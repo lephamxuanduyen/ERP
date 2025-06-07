@@ -1,0 +1,4 @@
+env
+*vscode
+info.txt
+/frontend/node_modules/
