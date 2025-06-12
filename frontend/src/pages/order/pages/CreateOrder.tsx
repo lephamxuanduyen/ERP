@@ -41,6 +41,8 @@ const CreateOrder = () => {
     const navigate = useNavigate();
 
     // --- State ---
+    const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
+    const [orderSuccessfullySaved, setOrderSuccessfullySaved] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [customerOptions, setCustomerOptions] = useState<{ label: string, value: number, customer: Customer }[]>([]);
     const [customerPhoneNumberInput, setCustomerPhoneNumberInput] = useState('');
@@ -269,6 +271,27 @@ const CreateOrder = () => {
 
     }, []); // Thêm dependencies
 
+    const handleGoToPayment = () => {
+        if (!createdOrderId) {
+            toast.error("Order has not been saved yet or ID is missing.");
+            return;
+        }
+        if (!selectedCustomer) { // Kiểm tra thêm khách hàng nếu cần thiết cho trang payment
+            toast.error("Customer information is missing for payment.");
+            return;
+        }
+        // Điều hướng đến trang thanh toán với ID đơn hàng
+        navigate(`/orders/payment/${createdOrderId}`, {
+            state: { // Truyền dữ liệu cần thiết cho trang PaymentPage
+                orderId: createdOrderId,
+                totalAmount: grandTotal, // Gửi tổng tiền hiện tại
+                customerName: selectedCustomer?.cus_name, // Tên khách hàng (tùy chọn)
+                orderCode: `ORDER-${createdOrderId}` // Mã đơn hàng ví dụ
+                // Bạn có thể truyền thêm payment_method mặc định nếu cần
+            }
+        });
+    };
+
     const updateOrderDetail = useCallback(async (itemKey: string, field: keyof OrderDetailItem, value: any) => {
         let needsRecalculate = false;
         let newOrderDetails = orderDetails.map(item => {
@@ -434,6 +457,8 @@ const CreateOrder = () => {
             const response = await api.post('/api/orders/', payload);
             if (response.status === 201) {
                 toast.success('Order created successfully!');
+                setCreatedOrderId(response.data.id)
+                setOrderSuccessfullySaved(true)
             } else {
                 toast.error(response.data?.message || 'Failed to create order.');
             }
@@ -459,13 +484,12 @@ const CreateOrder = () => {
         <Col gap="30px" p={{ base: 4, md: 6 }}>
             <Row justifyContent="space-between" alignItems="center" mb={6}>
                 <Title label="CREATE NEW ORDER" />
-                <Button
-                    color="gray"
-                    variant="outline"
-                    onClick={() => toast.info("Go to Payment - Not implemented yet")}
-                ><FaChevronRight />
-                    Go to Payment
-                </Button>
+                <CustomButton
+                    label='Go to Payment'
+                    onClick={handleGoToPayment}
+                    leftIcon={<FaChevronRight />}
+                    disabled={!createdOrderId || isSubmitting}
+                />
             </Row>
 
             <Box bg="white" p={6} borderRadius="xl" boxShadow="0 4px 12px 0 rgba(0,0,0,0.07)">
@@ -646,7 +670,7 @@ const CreateOrder = () => {
                                 label="Save Order"
                                 colorScheme="blue" // Or your primary color
                                 onClick={() => handleSaveOrder('PENDING')}
-                                disabled={!canSaveOrder || isSubmitting}
+                                disabled={!canSaveOrder || isSubmitting || orderSuccessfullySaved}
                                 loading={isSubmitting}
                             />
                         </HStack>

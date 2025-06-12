@@ -9,52 +9,68 @@ class InvoiceSerializer(serializers.ModelSerializer):
         fields=['id', 'order', 'payment_status', 'create_at', 'total_amount', 'amount_received', 'amount_change']
         read_only_fields = ['amount_change', 'payment_status']
         
-    def create(self, validate_data):
-        order_id = validate_data.get('order')
-        order = Order.objects.get(id=order_id)
-        if order and order.status=="PENDING" or order.status=="Pending":
-            total_amount = validate_data.get('total_amount', 0)
-            amount_received = validate_data.get('amount_received', 0)
-            validate_data['amount_change'] = amount_received - total_amount
-            order_id = validate_data['order']
-            order = Order.objects.get(id=order_id)
-            coupon_id = order.coupon.id
-            customer = order.customer
-            loyalty_reward = LoyaltyReward.objects.filter(tier=customer.tier.id, coupon=coupon_id).first()
-            points_used = loyalty_reward.points_required
-            exchange_rate = customer.tier.exchange_rate
-            points_earned = total_amount // exchange_rate
-            points = LoyaltyProgram.objects.get(customer=customer).points - points_used
-            with transaction.atomic:
-                invoice = Invoice.objects.create(**validate_data)
-                PointTransactions.objects.create(
-                    points_earned = points_earned,
-                    points_used = points_used,
-                    customer = customer.id,
-                    order = order.id
-                )
-                LoyaltyProgram.objects.update(points=points + points_earned - points_used)
-                
-                # Tìm tier của khách hàng => customer.tier.min_points
-                
-                # For tier trong tất cả Tiers: 
-                #   nếu poins > min_points: update hàng của khách hàng => customer.tier = tier, break
-                
-                for tier in RewardTier.objects.all().order_by('-min_points'):
-                    if points > tier.min_points:
-                        customer.tier = tier
-                        break
-                
-                if amount_received==0: # khách chưa trả tiền
-                    invoice.objects.update(payment_status="UNPAID")
-                elif amount_received>=0: # Đã trả hết tiền
-                    invoice.objects.update(payment_status="PAID")
-                    order.objects.update(status="COMPLETE")
-                elif amount_received < 0: # Thiếu tiền, mới trả một phần
-                    invoice.objects.update(payment_status="PARTIALLY_PAID")
-                    customer.objects.update(customer.debt_amount - invoice.amount_change)   
-        return invoice
-    
+    def create(self, validated_data):
+        order = validated_data.get('order')
+
+        if not order or order.status.upper() != "PENDING":
+            raise serializers.ValidationError("Order must be in PENDING status.")
+
+        total_amount = validated_data.get('total_amount', 0)
+        amount_received = validated_data.get('amount_received', 0)
+        validated_data['amount_change'] = amount_received - total_amount
+
+        customer = order.customer
+        coupon = order.coupon
+        coupon_id = coupon.id if coupon else None
+
+        loyalty_reward = LoyaltyReward.objects.filter(
+            tier=customer.tier.id,
+            coupon=coupon_id
+        ).first()
+        points_used = loyalty_reward.points_required if loyalty_reward else 0
+        exchange_rate = customer.tier.exchange_rate or 1
+        points_earned = total_amount // exchange_rate
+
+        loyalty_program = LoyaltyProgram.objects.get(customer=customer)
+        new_points = loyalty_program.points + points_earned - points_used
+
+        with transaction.atomic():
+            # Tạo invoice
+            invoice = Invoice.objects.create(**validated_data)
+
+            # Ghi nhận giao dịch điểm
+            PointTransactions.objects.create(
+                points_earned=points_earned,
+                points_used=points_used,
+                customer=customer,
+                order=order
+            )
+
+            # Cập nhật điểm mới
+            loyalty_program.points = new_points
+            loyalty_program.save()
+
+            # Cập nhật tier nếu cần
+            for tier in RewardTier.objects.all().order_by('-min_points'):
+                if new_points >= tier.min_points:
+                    customer.tier = tier
+                    break
+            customer.save()
+
+            # Cập nhật trạng thái thanh toán và nợ
+            if amount_received == 0:
+                invoice.payment_status = "UNPAID"
+            elif amount_received >= total_amount:
+                invoice.payment_status = "PAID"
+                order.status = "COMPLETE"
+                order.save()
+            else:
+                invoice.payment_status = "PARTIALLY_PAID"
+                customer.debt_amount += (total_amount - amount_received)
+                customer.save()
+
+            invoice.save()
+            return invoice
 '''
 Tạo mới Invoice
 Invoice => Lấy Order => Lấy coupon => lấy Loyalty_Reward => points_required

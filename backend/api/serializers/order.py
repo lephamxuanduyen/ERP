@@ -13,16 +13,16 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         
         
 class OrderSerializer(serializers.ModelSerializer):
-    details = OrderDetailSerializer(
+    order_details = OrderDetailSerializer(
         many=True,
         required=False
     )
     class Meta:
         model = Order
-        fields = ['id', 'total_amount', 'payment_method', 'order_date', 'status', 'customer', 'coupon', 'discount', 'employee', 'details']
+        fields = ['id', 'total_amount', 'payment_method', 'order_date', 'status', 'customer', 'coupon', 'discount', 'employee', 'order_details']
     
     def create(self, validated_data):
-        details_data = validated_data.pop('details', [])
+        details_data = validated_data.pop('order_details')
         # Gán giá trị status là PENDING
         validated_data['status']="PENDING"
         total_amount = 0
@@ -84,82 +84,89 @@ class OrderSerializer(serializers.ModelSerializer):
         return order
     
     def update(self, instance, validate_data):
-        order_details_data = validate_data.pop('order_details', [])
+        order_details_data = validate_data.pop('order_details', None)  # Cho phép là None nếu không truyền
         discount_id = validate_data.get('discount', None)
         coupon_id = validate_data.get('coupon', None)
-        total_amount = 0
-        
-        if discount_id: new_discount = Discount.objects.select_for_update().get(id=discount_id)
-        if coupon_id: new_coupon = Coupon.objects.select_for_update().get(id=coupon_id)
-        
+
         with transaction.atomic():
-            # Hoàn lại discount/ Coupon/ Gift Product
+            # ✅ Nếu không truyền order_details => chỉ cập nhật các field đơn giản
+            if order_details_data is None:
+                for attr, value in validate_data.items():
+                    setattr(instance, attr, value)
+                instance.save()
+                return instance
+
+            # 🔄 Nếu có order_details => thực hiện đầy đủ logic (rollback khuyến mãi, cập nhật kho,...)
+            if discount_id:
+                new_discount = Discount.objects.select_for_update().get(id=discount_id)
+            if coupon_id:
+                new_coupon = Coupon.objects.select_for_update().get(id=coupon_id)
+
             self._rollback_old_promotions(instance)
-            
-            # cập nhật các thuộc tính của Order
+
             for attr, value in validate_data.items():
                 setattr(instance, attr, value)
             instance.save()
-            
-            # Nếu Order đang ở trạng thái PENDING (chưa thanh toán/hủy) => Cho phép cập nhật OrderDetail
-            if instance.status=="PENDING":
-                # DS ID của các order_detail trong request
-                new_order_details = {validate_data.get('id') for order_detail in order_details_data if order_detail.get('id')}
-                # DS ID của các order_detail có trong db
-                old_order_details = set(instance.details.values_list('id', flat=True))
-                
-                # Hoàn lại tồn kho cho những Order detail cũ
-                for old_detail_id in old_order_details:
-                    # Từ Old Order Detail => Lấy Old Variant & Old Quantity
-                    order_detail = OrderDetail.objects.get(order=instance)
-                    old_variant = order_detail.variant
-                    old_qty = order_detail.qty
-                    # Cập nhật Inventory => qty_out -= Old Quantity; balance += Old Quantity
-                    inventory = Inventory.objects.get(variant=old_variant)
-                    inventory.quantity_out -= old_qty
-                    inventory.balance += old_qty
+
+            total_amount = 0
+
+            if instance.status == "PENDING":
+                # update order detail + inventory như hiện tại
+                new_order_detail_ids = {d.get('id') for d in order_details_data if d.get('id')}
+                old_order_detail_ids = set(instance.details.values_list('id', flat=True))
+
+                for old_detail_id in old_order_detail_ids:
+                    order_detail = OrderDetail.objects.get(id=old_detail_id, order=instance)
+                    variant = order_detail.variant
+                    qty = order_detail.qty
+
+                    inventory = Inventory.objects.get(variant=variant)
+                    inventory.quantity_out -= qty
+                    inventory.balance += qty
                     inventory.save()
-                    # Cập nhât Inventory Batch (FIFO) order by receive date (Lấy First Batch) => qty += Old Quantity
-                    batch = InventoryBatch.objects.filter(variant=old_variant).order_by('received_date').first()
-                    batch.qty += old_qty
-                    batch.save()
-                
-                # Xóa các order_detail không có trong request
-                instance.details.filter(id__in=old_order_details - new_order_details).delete()
-                
-                # Cập nhật Order Detail
+
+                    batch = InventoryBatch.objects.filter(variant=variant).order_by('received_date').first()
+                    if batch:
+                        batch.qty += qty
+                        batch.save()
+
+                instance.details.filter(id__in=old_order_detail_ids - new_order_detail_ids).delete()
+
                 for detail_data in order_details_data:
-                    detail_id=detail_data.get('id', '')
-                    price=ProductVariant.objects.get(detail_id).variant_price
-                    
-                    if detail_id and detail_id in old_order_details:
-                        # Nếu order_detail có trong instance => cập nhật
+                    detail_id = detail_data.get('id')
+                    variant_id = detail_data.get('variant')
+                    qty = detail_data.get('qty', 1)
+                    unit = detail_data.get('unit', '')
+
+                    price = ProductVariant.objects.get(id=variant_id).variant_price
+                    total = qty * price
+                    total_amount += total
+
+                    if detail_id and detail_id in old_order_detail_ids:
                         OrderDetail.objects.filter(id=detail_id).update(
-                            variant=detail_data.get('variant', ''),
+                            variant=variant_id,
                             order=instance,
-                            qty=detail_data.get('qty', 1),
-                            total=detail_data.get('qty', 1)*price,
-                            unit=detail_data.get('unit','')
+                            qty=qty,
+                            total=total,
+                            unit=unit
                         )
                     else:
-                    # Nếu order_detail không có trong instance => Tạo mới
                         OrderDetail.objects.create(
-                            variant=detail_data.get('variant', ''),
+                            variant=variant_id,
                             order=instance,
-                            qty=detail_data.get('qty', 1),
-                            total=detail_data.get('qty', 1)*price,
-                            unit=detail_data.get('unit','')
-                        )    
-                    total_amount += detail_data.get('qty', 1)*price
-                      
-            # Áp dụng discount mới
+                            qty=qty,
+                            total=total,
+                            unit=unit
+                        )
+
                 total_amount = self._apply_discount(instance, new_discount, discount_id, total_amount)
-            # Áp dụng coupon mới
                 total_amount = self._apply_coupon(new_coupon, total_amount)
 
             instance.total_amount = max(total_amount, 0)
             instance.save()
-        return instance
+
+            return instance
+
     
     def _apply_discount(self, order, discount, discount_id, total_amount):
         now = timezone.now()

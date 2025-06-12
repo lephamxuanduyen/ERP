@@ -249,7 +249,7 @@ const App = () => {
                     <Route path="orders">
                         <Route index element={<Order />} />
                         <Route path="add/" element={<CreateOrder />} />
-                        <Route path="edit/:id/" element={<EditOrder />} />
+                        <Route path="payment/:id/" element={<EditOrder />} />
                     </Route>
                     <Route path="purchase">
                         <Route index element={<Purchase />} />

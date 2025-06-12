@@ -145,7 +145,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
                                     </Checkbox.Root>
                                 </Table.Cell>
                                 <Table.Cell>
-                                    <RouterLink to={`/orders/edit/${order.id}`}>
+                                    <RouterLink to={`/orders/payment/${order.id}`}>
                                         <Text fontWeight="medium" color="blue.600">
                                             {customerName}
                                         </Text>

@@ -1,5 +1,5 @@
 import { Button, ButtonProps } from '@chakra-ui/react'
-import React from 'react'
+import React, { Component } from 'react'
 
 interface Props extends ButtonProps {
     label: string
@@ -7,9 +7,10 @@ interface Props extends ButtonProps {
     background?: string
     color_hover?: string
     bg_hover?: string
+    leftIcon?: any
 }
 
-const CustomButton = ({ label, color, background, color_hover, bg_hover, ...rest }: Props) => {
+const CustomButton = ({ label, color, background, color_hover, bg_hover, leftIcon, ...rest }: Props) => {
     return (
         <Button
             p={'10px 20px'}
@@ -26,6 +27,7 @@ const CustomButton = ({ label, color, background, color_hover, bg_hover, ...rest
             }}
             {...rest}
         >
+            {leftIcon ? leftIcon : ""}
             {label}
         </Button>
     )

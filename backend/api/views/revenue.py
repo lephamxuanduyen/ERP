@@ -2,13 +2,16 @@ from django.db.models import Sum
 from django.db.models.functions import TruncWeek, TruncMonth, TruncYear
 from rest_framework import generics
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
 from rest_framework import status
 from ..models import Order
 from ..serializers import EmptySerializer
 
 
-class RevenueStatisticsAPIView(generics.GenericAPIView):
-    serializer_class = EmptySerializer
+class RevenueStatisticsAPIView(APIView):
+    # serializer_class = EmptySerializer
+    permission_classes = [AllowAny]
     
     def get(self, request):
         period = request.query_params.get("period", "month").lower()  # default: month

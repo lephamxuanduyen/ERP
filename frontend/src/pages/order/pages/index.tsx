@@ -34,6 +34,7 @@ const OrdersListPage = () => {
         api.get(`/api/orders/${queryParams}`)
             .then((res) => {
                 setOrders(res.data.results || []);
+                console.log(res.data.results)
             })
             .catch((err) => {
                 console.error("Failed to fetch orders:", err);

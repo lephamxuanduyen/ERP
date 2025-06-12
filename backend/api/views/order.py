@@ -24,3 +24,9 @@ class OrderUpdate(generics.UpdateAPIView):
     serializer_class=OrderSerializer
     queryset=Order.objects.all()
     permission_classes=[AllowAny]
+    
+
+class OrderDelete(generics.DestroyAPIView):
+    serializer_class=OrderSerializer
+    queryset=Order.objects.all()
+    permission_classes=[AllowAny]

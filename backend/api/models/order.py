@@ -26,7 +26,7 @@ class Order(models.Model):
 
 class OrderDetail(models.Model):
     variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='details', null=True, blank=True)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_details', null=True, blank=True)
     qty = models.IntegerField(default=1)
     total = models.IntegerField(default=0)
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE)
@@ -39,15 +39,15 @@ class Invoice(models.Model):
         PARTIALLY_PAID = "PARTIALLY_PAID", "Partially-part"
     
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='invoice_order')    
-    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices)
-    create_at = models.DateField(auto_now_add=True)
+    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, null=True, blank=True)
+    create_at = models.DateField(auto_now_add=True, null=True, blank=True)
     total_amount = models.IntegerField(default=0)
     amount_received = models.IntegerField(default=0)
-    amount_change = models.IntegerField(default=0)
+    amount_change = models.IntegerField(default=0, null=True, blank=True)
     
     def save(self, *args, **kwargs):
         self.amount_change = self.amount_received - self.total_amount
-        super.save(*args, **kwargs)
+        super().save(*args, **kwargs)
         
         
 class PointTransactions(models.Model):
