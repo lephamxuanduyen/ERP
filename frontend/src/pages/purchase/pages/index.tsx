@@ -8,6 +8,7 @@ import CustomButton from '../../../components/CustomButton';
 import SearchBox from '../../../components/SearchBox';
 import PurchaseOrderTable, { PurchaseOrder } from '../components/PurchaseOrder';
 import { toast } from 'sonner';
+import { getUserGroups } from '../../../utils/auth';
 
 // Function to fetch supplier/employee names (placeholder - implement actual fetching)
 // This is a simplified example. In a real app, you might fetch all suppliers/employees once
@@ -101,8 +102,12 @@ const index = () => {
             </Center>
         );
     }
+    const groups = getUserGroups()
 
-    return (
+    const isShopOwner = groups.includes("Shop Owner")
+    const isWarehouseManager = groups.includes("Warehouse Manager")
+
+    return (isShopOwner || isWarehouseManager) && (
         <Col gap="20px" p={{ base: "15px", md: "20px" }}>
             <Row
                 justifyContent="space-between"
@@ -111,12 +116,12 @@ const index = () => {
                 gap={{ base: 4, md: 2 }}
                 mb={6}
             >
-                <RouterLink to="/purchase/add"> {/* Adjust to your "create purchase order" route */}
+                {(isShopOwner) && (<RouterLink to="/purchase/add"> {/* Adjust to your "create purchase order" route */}
                     <CustomButton
                         label="+ Create New PO"
                     // Add other props like colorScheme if needed
                     />
-                </RouterLink>
+                </RouterLink>)}
                 <Box mb={6}>
                     <SearchBox
                         onEnter={handleSearch}

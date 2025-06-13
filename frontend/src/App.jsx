@@ -57,12 +57,16 @@ const App = () => {
                 <Route
                     path="/"
                     element={
-                        <ProtectedRoute allowedGroups={["Manager", "Saler"]}>
+                        <ProtectedRoute allowedGroups={["Shop Owner", "Saler"]}>
                             <Layout />
                         </ProtectedRoute>
                     }
                 >
-                    <Route index element={<DashboardPage />} />
+                    <Route
+                        index
+                        element={<DashboardPage />}
+                        allowedGroups={"Shop Owner"}
+                    />
                     <Route path="products/">
                         <Route
                             index
@@ -88,7 +92,10 @@ const App = () => {
                                 </ProtectedRoute>
                             }
                         />
-                        <Route path="categories/">
+                        <Route
+                            path="categories/"
+                            allowedGroups={["Shop Owner"]}
+                        >
                             <Route
                                 index
                                 element={
@@ -120,7 +127,10 @@ const App = () => {
                                 }
                             />
                         </Route>
-                        <Route path="attributes/">
+                        <Route
+                            path="attributes/"
+                            allowedGroups={["Shop Owner"]}
+                        >
                             <Route
                                 index
                                 element={
@@ -152,7 +162,7 @@ const App = () => {
                                 }
                             />
                         </Route>
-                        <Route path="units/">
+                        <Route path="units/" allowedGroups={["Shop Owner"]}>
                             <Route
                                 index
                                 element={
@@ -185,13 +195,14 @@ const App = () => {
                             />
                         </Route>
                     </Route>
-                    <Route path="customer/">
+                    <Route
+                        path="customer/"
+                        allowedGroups={["Shop Owner", "Saler"]}
+                    >
                         <Route
                             index
                             element={
-                                <ProtectedRoute
-                                    allowedGroups={["Manager", "Saler"]}
-                                >
+                                <ProtectedRoute>
                                     <Customer />
                                 </ProtectedRoute>
                             }
@@ -218,12 +229,12 @@ const App = () => {
                         />
                     </Route>
                     {/* TODO */}
-                    <Route path="supplier/">
+                    <Route path="supplier/" allowedGroups={["Shop Owner"]}>
                         <Route index element={<Supplier />} />
                         <Route path="add/" element={<AddSuplier />} />
                         <Route path="edit/:id/" element={<EditSupplier />} />
                     </Route>
-                    <Route path="promotion/">
+                    <Route path="promotion/" allowedGroups={["Shop Owner"]}>
                         <Route path="discount/">
                             <Route index element={<Discount />} />
                             <Route path="add/" element={<AddDiscount />} />
@@ -238,7 +249,7 @@ const App = () => {
                             <Route path="edit/:id/" element={<EditCoupon />} />
                         </Route>
                     </Route>
-                    <Route path="employee/">
+                    <Route path="employee/" allowedGroups={["Shop Owner"]}>
                         <Route index element={<div>List Employee</div>} />
                         <Route path="add/" element={<div>Add Employee</div>} />
                         <Route
@@ -246,12 +257,18 @@ const App = () => {
                             element={<div>Edit Employee</div>}
                         />
                     </Route>
-                    <Route path="orders">
+                    <Route
+                        path="orders"
+                        allowedGroups={["Shop Owner", "Saler"]}
+                    >
                         <Route index element={<Order />} />
                         <Route path="add/" element={<CreateOrder />} />
                         <Route path="payment/:id/" element={<EditOrder />} />
                     </Route>
-                    <Route path="purchase">
+                    <Route
+                        path="purchase"
+                        allowedGroups={["Shop Owner", "Warehouse Manager"]}
+                    >
                         <Route index element={<Purchase />} />
                         <Route path="add/" element={<AddPurchaseOrder />} />
                         <Route
@@ -259,7 +276,10 @@ const App = () => {
                             element={<EditPurchaseOrder />}
                         />
                     </Route>
-                    <Route path="invoice">
+                    <Route
+                        path="invoice"
+                        allowedGroups={["Shop Owner", "Saler"]}
+                    >
                         <Route index element={<Invoice />} />
                     </Route>
                     {/* TODO */}

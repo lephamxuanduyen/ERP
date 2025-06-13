@@ -43,7 +43,7 @@ export const AddDiscount = () => {
     const [variants, setVariant] = useState<{ value: number, label: string }[]>([])
 
     const [conditions, setConditions] = useState([
-        { min_purchase_qty: '', min_purchase_amount: '', discount: '' }
+        { min_purchase_qty: 0, min_purchase_amount: 0, discount: '' }
     ])
 
     const [giftProducts, setGiftProducts] = useState([
@@ -102,7 +102,7 @@ export const AddDiscount = () => {
     }
 
     const addCondition = () => {
-        setConditions([...conditions, { min_purchase_qty: '', min_purchase_amount: '', discount: '' }])
+        setConditions([...conditions, { min_purchase_qty: 0, min_purchase_amount: 0, discount: '' }])
     }
 
     const removeCondition = (index: number) => {
@@ -173,7 +173,7 @@ export const AddDiscount = () => {
                                             <CustomInput
                                                 type="number"
                                                 value={condition.min_purchase_amount}
-                                                onChange={(e) => handleGiftChange(idx, 'qty', e.target.value)}
+                                                onChange={(e) => handleConditionChange(idx, 'qty', e.target.value)}
                                             />
                                         </Field.Root>
                                     </Table.Cell>

@@ -91,8 +91,9 @@ const SideBarItem = ({ to, label, icon: Icon, subItems }: SidebarItemProps) => {
 const SideBar = () => {
     const groups = getUserGroups()
 
-    const isAdmin = groups.includes("Manager")
+    const isShopOwner = groups.includes("Shop Owner")
     const isSaler = groups.includes("Saler")
+    const isWarehouseManager = groups.includes("Warehouse Manager")
 
     return (
         <Col
@@ -109,7 +110,7 @@ const SideBar = () => {
             zIndex={1}
         >
             {(true) && (<SideBarItem to='/' label='Dashboard' icon={CiHome} />)}
-            {(true) && (
+            {(isShopOwner) && (
                 <SideBarItem
                     to='/products/'
                     label='Products'
@@ -120,9 +121,9 @@ const SideBar = () => {
                         { to: '/products/attributes/', label: 'Attribute' },
                         { to: '/products/units/', label: 'Unit' },
                     ]} />)}
-            {(true) && (<SideBarItem to="/customer/" label='Customer' icon={CiUser} />)}
-            {(true) && (<SideBarItem to="/supplier/" label='Supplier' icon={CiShop} />)}
-            {(true) && (
+            {(isShopOwner || isSaler) && (<SideBarItem to="/customer/" label='Customer' icon={CiUser} />)}
+            {(isShopOwner) && (<SideBarItem to="/supplier/" label='Supplier' icon={CiShop} />)}
+            {(isShopOwner) && (
                 <SideBarItem
                     to='/promotion/discount/'
                     label='Promotions'
@@ -131,9 +132,9 @@ const SideBar = () => {
                         { to: '/promotion/discount/', label: 'Discount' },
                         { to: '/promotion/coupon/', label: 'Coupon' },
                     ]} />)}
-            {(true) && (<SideBarItem to="/purchase/" label='Purchase Order' icon={CiDeliveryTruck} />)}
-            {(true) && (<SideBarItem to="/orders/" label='Order' icon={CiShoppingCart} />)}
-            {(true) && (<SideBarItem to="/employee/" label='Employee' icon={CiSpeaker} />)}
+            {(isShopOwner || isWarehouseManager) && (<SideBarItem to="/purchase/" label='Purchase Order' icon={CiDeliveryTruck} />)}
+            {(isShopOwner || isSaler) && (<SideBarItem to="/orders/" label='Order' icon={CiShoppingCart} />)}
+            {(false) && (<SideBarItem to="/employee/" label='Employee' icon={CiSpeaker} />)}
 
         </Col>
     )

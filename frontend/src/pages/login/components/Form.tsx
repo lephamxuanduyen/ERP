@@ -4,7 +4,7 @@ import api from "../../../api";
 import { useNavigate } from "react-router-dom";
 import { ACCESS_TOKEN, REFRESH_TOKEN } from "../../../constants";
 import { LoadingIndicator } from "../../../components/LoadingIndicator";
-import { Box, Button, Field, Flex, Input, Text, chakra } from "@chakra-ui/react"
+import { Box, Button, Center, Field, Flex, Input, Text, chakra } from "@chakra-ui/react"
 import { Col } from '../../../components/Col';
 import { Row } from '../../../components/Row'
 import { CiUser, CiLock } from "react-icons/ci";
@@ -91,16 +91,18 @@ const LoginForm = ({ route, method }) => {
                         <CiLock fontSize={'30px'} />
                     </Row>
                 </Field.Root>
-                {loading && <LoadingIndicator />}
+                <Center>
+                    {loading && <LoadingIndicator />}
+                </Center>
             </Col>
             <Button
                 background={'black'}
                 color={'white'}
                 _hover={{ background: 'white', color: 'black' }}
                 onClick={handleSubmit}
-                _focus={{ 
+                _focus={{
                     boxShadow: 'none',
-                    outline: 'none' 
+                    outline: 'none'
                 }}
             >
                 Login

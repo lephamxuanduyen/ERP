@@ -9,6 +9,7 @@ import ApexCharts, { ApexOptions } from 'apexcharts';
 import dayjs from 'dayjs';
 import api from '../../api';
 import { toast } from 'sonner';
+import OrderTable, { Order } from '../order/components/OrderTable';
 
 // --- Interfaces (Define based on actual API responses for each section) ---
 interface SummaryCardData {
@@ -30,18 +31,6 @@ interface TopProductData {
 interface RevenueDataPoint {
     period: string; // YYYY-MM-DD
     total_amount: number;
-}
-
-interface RecentOrderItem {
-    id: string; // Example: "I293DSA39"
-    itemSummary: string; // Example: "iPhone 13" (could be multiple items)
-    qty: number;
-    order_date: string; // Example: "January 20, 2022"
-    amount: number;
-    status: 'Pending' | 'Approved' | 'Paused' | 'Completed' | 'Cancelled'; // Adjusted to match image
-    // Raw API fields if different
-    api_order_id?: number;
-    api_status?: string;
 }
 
 // --- Helper Functions ---
@@ -74,7 +63,7 @@ const DashboardPage = () => {
     const [topProducts, setTopProducts] = useState<TopProductData[]>([]);
     const [revenueChartData, setRevenueChartData] = useState<RevenueDataPoint[]>([]);
     const [revenuePeriod, setRevenuePeriod] = useState<'day' | 'week' | 'month' | 'year'>('week'); // Default to week like image
-    const [recentOrders, setRecentOrders] = useState<RecentOrderItem[]>([]);
+    const [recentOrders, setRecentOrders] = useState<Order[]>([]);
 
     const fetchRevenueData = useCallback(async (period: 'day' | 'week' | 'month' | 'year') => {
         try {
@@ -95,6 +84,28 @@ const DashboardPage = () => {
             toast.error("Could not fetch revenue data.");
         }
     }, [toast]);
+
+
+    const fetchOrders = useCallback((searchTerm = "", filter = "Phone") => {
+        setIsLoading(true);
+        let queryParams = `?limit=100000`; // Fetch a large number as requested
+        api.get(`/api/orders/${queryParams}`)
+            .then((res) => {
+                setRecentOrders(res.data.results || []);
+                console.log(res.data.results)
+            })
+            .catch((err) => {
+                console.error("Failed to fetch orders:", err);
+                toast.error("Failed to fetch orders. Please try again.");
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
+    }, []);
+
+    useEffect(() => {
+        fetchOrders();
+    }, [fetchOrders]);
 
 
     useEffect(() => {
@@ -129,11 +140,6 @@ const DashboardPage = () => {
                 // TODO: API for Recent Orders. Example: GET /api/orders/?limit=3&ordering=-order_date
                 // You'll need to map the API response to RecentOrderItem structure
                 // For now, using placeholder data matching the image
-                setRecentOrders([
-                    { id: "I293DSA39", itemSummary: "iPhone 13", qty: 4, order_date: "2022-01-20", amount: 799, status: "Pending", api_order_id: 1 },
-                    { id: "U2349SD12", itemSummary: "Xiaomi Redmi Note 10", qty: 1, order_date: "2022-01-20", amount: 149.99, status: "Approved", api_order_id: 2 },
-                    { id: "F2349SU38", itemSummary: "Macbook Air 2019", qty: 2, order_date: "2022-01-20", amount: 1099.99, status: "Paused", api_order_id: 3 },
-                ]);
 
                 // Fetch initial revenue data
                 await fetchRevenueData(revenuePeriod);
@@ -234,39 +240,6 @@ const DashboardPage = () => {
 
     return (
         <VStack gap={6} align="stretch" p={{ base: 4, md: 6 }}>
-            <Heading as="h1" size="xl" mb={2}>Today</Heading>
-
-            {/* Summary Cards */}
-            <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={6}>
-                {summaryData.map((item, index) => (
-                    <StatCard key={index} {...item} />
-                ))}
-            </SimpleGrid>
-
-            <SimpleGrid columns={{ base: 1, lg: 3 }} gap={6}>
-                {/* Earnings */}
-                <Box p={6} bg="white" borderRadius="lg" boxShadow="md" gridColumn={{ base: "span 1", lg: "span 1" }}>
-                    <Heading size="md" mb={1}>Earnings</Heading>
-                    <Text fontSize="sm" color="gray.500" mb={4}>Total Expense: {formatCurrency(earningsData.totalExpense)}</Text>
-                    <Flex justify="center" align="center" direction="column" h="150px"> {/* Fixed height for consistency */}
-                        <ReactApexChart options={earningsChartOptions} series={earningsChartSeries} type="radialBar" height="180%" />
-                    </Flex>
-                    <Text textAlign="center" fontSize="sm" color="gray.600" mt={-2}>
-                        Profit is {earningsData.profitPercentage}% More than yesterday
-                    </Text>
-                </Box>
-
-                {/* Top Products */}
-                <Box p={6} bg="white" borderRadius="lg" boxShadow="md" gridColumn={{ base: "span 1", lg: "span 2" }}>
-                    <Heading size="md" mb={4}>Top Products</Heading>
-                    <VStack gap={3} align="stretch">
-                        {topProducts.map((product, index) => (
-                            <TopProductItem key={product.id} product={product} index={index + 1} />
-                        ))}
-                    </VStack>
-                </Box>
-            </SimpleGrid>
-
             {/* Revenue Chart */}
             <Box p={6} bg="white" borderRadius="lg" boxShadow="md">
                 <Flex justify="space-between" align="center" mb={4}>
@@ -310,7 +283,7 @@ const DashboardPage = () => {
                         Go to Orders Page <Icon as={FiArrowRight} ml={1} />
                     </ChakraLink>
                 </Flex>
-                <RecentOrdersTable orders={recentOrders} />
+                <OrderTable orders={recentOrders} size={3} />
             </Box>
         </VStack>
     );

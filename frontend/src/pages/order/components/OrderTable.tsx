@@ -26,6 +26,7 @@ export interface Order {
 
 interface OrderTableProps {
     orders: Order[];
+    size?: number;
 }
 
 const getOrderStatusProps = (status: Order['status']): { label: string; colorScheme: string } => {
@@ -41,7 +42,10 @@ const getOrderStatusProps = (status: Order['status']): { label: string; colorSch
     }
 };
 
-const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
+const OrderTable: React.FC<OrderTableProps> = ({ orders, size }) => {
+    const sortedOrders = [...orders].sort((a, b) => b.id - a.id)
+        .slice(0, size ?? orders.length);
+
     const [customerMap, setCustomerMap] = useState<Record<number, CustomerInfo>>({});
 
     const fetchCustomer = async (customerId: number) => {
@@ -68,12 +72,12 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
     };
 
     useEffect(() => {
-        const customerIdsToFetch = orders
+        const customerIdsToFetch = sortedOrders
             .map(order => order.customer)
             .filter((cus): cus is number => typeof cus === 'number');
 
         customerIdsToFetch.forEach(id => fetchCustomer(id));
-    }, [orders]);
+    }, [sortedOrders]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -83,7 +87,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
         }).format(amount);
     };
 
-    if (!orders || orders.length === 0) {
+    if (!sortedOrders || sortedOrders.length === 0) {
         return (
             <Box textAlign="center" p={5}>
                 <Text>No orders found.</Text>
@@ -110,7 +114,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
                     </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                    {orders.map((order) => {
+                    {sortedOrders.map((order) => {
                         const statusProps = getOrderStatusProps(order.status);
 
                         let customerName = 'N/A';
